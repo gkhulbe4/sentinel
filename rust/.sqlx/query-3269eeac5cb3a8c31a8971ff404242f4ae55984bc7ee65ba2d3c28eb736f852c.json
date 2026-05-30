@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO \"Alert\" (id, \"userId\", \"ruleId\", \"eventType\", signature, payload)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3269eeac5cb3a8c31a8971ff404242f4ae55984bc7ee65ba2d3c28eb736f852c"
+}

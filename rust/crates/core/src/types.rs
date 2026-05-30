@@ -16,6 +16,30 @@ pub enum EventType {
     WalletActivity,
 }
 
+impl EventType {
+    /// The canonical string stored in the DB / used over the wire.
+    #[must_use]
+    pub fn as_db_str(self) -> &'static str {
+        match self {
+            EventType::SolTransfer => "SOL_TRANSFER",
+            EventType::TokenSwap => "TOKEN_SWAP",
+            EventType::NewToken => "NEW_TOKEN",
+            EventType::WalletActivity => "WALLET_ACTIVITY",
+        }
+    }
+
+    #[must_use]
+    pub fn from_db_str(s: &str) -> Option<Self> {
+        match s {
+            "SOL_TRANSFER" => Some(EventType::SolTransfer),
+            "TOKEN_SWAP" => Some(EventType::TokenSwap),
+            "NEW_TOKEN" => Some(EventType::NewToken),
+            "WALLET_ACTIVITY" => Some(EventType::WalletActivity),
+            _ => None,
+        }
+    }
+}
+
 /// Risk classification produced by the AI enrichment layer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
@@ -25,6 +49,18 @@ pub enum RiskFlag {
     Low,
     Medium,
     High,
+}
+
+impl RiskFlag {
+    #[must_use]
+    pub fn as_db_str(self) -> &'static str {
+        match self {
+            RiskFlag::None => "none",
+            RiskFlag::Low => "low",
+            RiskFlag::Medium => "medium",
+            RiskFlag::High => "high",
+        }
+    }
 }
 
 /// A normalized on-chain event — the contract between the ingestor and matcher.

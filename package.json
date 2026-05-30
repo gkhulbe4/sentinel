@@ -17,11 +17,12 @@
     "db:migrate": "pnpm --filter @sentinel/db migrate",
     "db:studio": "pnpm --filter @sentinel/db studio",
     "gen:types": "cargo test --manifest-path rust/Cargo.toml -p sentinel-core export_bindings",
-    "rust:check": "cargo check --manifest-path rust/Cargo.toml --all-targets",
-    "rust:clippy": "cargo clippy --manifest-path rust/Cargo.toml --all-targets --all-features -- -D warnings",
-    "rust:test": "cargo test --manifest-path rust/Cargo.toml",
-    "rust:build": "cargo build --release --manifest-path rust/Cargo.toml",
+    "rust:check": "SQLX_OFFLINE=true cargo check --manifest-path rust/Cargo.toml --all-targets",
+    "rust:clippy": "SQLX_OFFLINE=true cargo clippy --manifest-path rust/Cargo.toml --all-targets --all-features -- -D warnings",
+    "rust:test": "SQLX_OFFLINE=true cargo test --manifest-path rust/Cargo.toml",
+    "rust:build": "SQLX_OFFLINE=true cargo build --release --manifest-path rust/Cargo.toml",
     "rust:fmt": "cargo fmt --manifest-path rust/Cargo.toml --all",
+    "db:sqlx-prepare": "cd rust && cargo sqlx prepare --workspace",
     "check": "pnpm typecheck && pnpm lint && pnpm rust:check && pnpm rust:clippy"
   },
   "devDependencies": {

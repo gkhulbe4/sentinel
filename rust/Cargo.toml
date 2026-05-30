@@ -26,7 +26,8 @@ rand = "0.8"
 futures-util = "0.3"
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
-# sqlx + async-openai are added to the matcher in phases 6/8.
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "json"] }
+# async-openai is added to the matcher in phase 8.
 
 # Faster, smaller release binaries for the hot-path services.
 # Expanded/measured in Phase 10.

@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            id           AS \"id!\",\n            \"userId\"     AS \"user_id!\",\n            \"eventType\"  AS \"event_type!\",\n            \"walletAddr\" AS \"wallet_addr?\",\n            \"minUsd\"     AS \"min_usd?\",\n            \"isActive\"   AS \"is_active!\"\n        FROM \"WatchRule\"\n        WHERE \"isActive\" = true\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "event_type!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "wallet_addr?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "min_usd?",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_active!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "2281f9da582a5f51448d1cde66c43130abb977b8bc35a4b46b08e6408e443b81"
+}
