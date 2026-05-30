@@ -7,6 +7,7 @@
 mod cache;
 mod config;
 mod db;
+mod enrich;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,7 +24,7 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use sentinel_core::constants::{channel_alerts, CHANNEL_EVENTS, CHANNEL_RULES_CHANGED_PREFIX};
-use sentinel_core::{Alert, OnChainEvent, ServerMessage, WatchRule};
+use sentinel_core::{Alert, AlertEnrichedPatch, OnChainEvent, ServerMessage, WatchRule};
 
 use crate::cache::RuleCache;
 use crate::config::Config;
@@ -40,7 +41,7 @@ struct AlertJob {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     init_tracing();
-    let config = Config::load().context("failed to load config")?;
+    let config = Arc::new(Config::load().context("failed to load config")?);
 
     let pool = PgPoolOptions::new()
         .max_connections(config.db_max_connections)
@@ -59,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
     info!(rules = cache.len().await, "loaded active rules");
 
     let (job_tx, job_rx) = mpsc::channel::<AlertJob>(JOB_CAPACITY);
-    tokio::spawn(worker_loop(job_rx, pool.clone(), publish_conn));
+    tokio::spawn(worker_loop(job_rx, pool.clone(), publish_conn, config.clone()));
     tokio::spawn(periodic_refresh(pool.clone(), cache.clone(), config.rule_refresh_secs));
 
     run_event_loop(&redis_client, cache, pool, job_tx).await
@@ -127,8 +128,13 @@ async fn run_event_loop(
     Ok(())
 }
 
-/// Bounded worker pool: each job persists + publishes an alert concurrently.
-async fn worker_loop(mut rx: mpsc::Receiver<AlertJob>, pool: PgPool, conn: MultiplexedConnection) {
+/// Bounded worker pool: each job persists + publishes an alert, then enriches.
+async fn worker_loop(
+    mut rx: mpsc::Receiver<AlertJob>,
+    pool: PgPool,
+    conn: MultiplexedConnection,
+    config: Arc<Config>,
+) {
     let sem = Arc::new(Semaphore::new(MAX_CONCURRENT_JOBS));
     while let Some(job) = rx.recv().await {
         let Ok(permit) = sem.clone().acquire_owned().await else {
@@ -136,9 +142,10 @@ async fn worker_loop(mut rx: mpsc::Receiver<AlertJob>, pool: PgPool, conn: Multi
         };
         let pool = pool.clone();
         let conn = conn.clone();
+        let config = config.clone();
         tokio::spawn(async move {
             let _permit = permit;
-            if let Err(err) = process_job(&pool, conn, job).await {
+            if let Err(err) = process_job(&pool, conn, &config, job).await {
                 error!(%err, "alert job failed");
             }
         });
@@ -148,12 +155,14 @@ async fn worker_loop(mut rx: mpsc::Receiver<AlertJob>, pool: PgPool, conn: Multi
 async fn process_job(
     pool: &PgPool,
     mut conn: MultiplexedConnection,
+    config: &Config,
     job: AlertJob,
 ) -> anyhow::Result<()> {
     let AlertJob { event, rule } = job;
     let id = Uuid::new_v4().to_string();
     let created_at = chrono::Utc::now().to_rfc3339();
     let payload = serde_json::to_value(&event)?;
+    let channel = channel_alerts(&rule.user_id);
 
     db::insert_alert(
         pool,
@@ -166,22 +175,40 @@ async fn process_job(
     )
     .await?;
 
+    // 1) Deliver the alert immediately (unenriched).
     let alert = Alert {
-        id,
+        id: id.clone(),
         user_id: rule.user_id.clone(),
         rule_id: rule.id,
         event_type: event.event_type,
         signature: event.signature.clone(),
-        event,
+        event: event.clone(),
         explanation: None,
         risk_flag: None,
         risk_reason: None,
         created_at,
     };
+    let json = serde_json::to_string(&ServerMessage::Alert(Box::new(alert)))?;
+    let _: () = conn.publish(&channel, json).await?;
 
-    let message = ServerMessage::Alert(Box::new(alert));
-    let json = serde_json::to_string(&message)?;
-    let _: () = conn.publish(channel_alerts(&rule.user_id), json).await?;
+    // 2) Enrich (async), persist, and publish a patch the frontend applies.
+    let enrichment = enrich::enrich_event(&mut conn, config, &event).await;
+    db::update_enrichment(
+        pool,
+        &id,
+        &enrichment.explanation,
+        enrichment.risk_flag.as_db_str(),
+        enrichment.risk_reason.as_deref(),
+    )
+    .await?;
+    let patch = AlertEnrichedPatch {
+        id,
+        explanation: enrichment.explanation,
+        risk_flag: enrichment.risk_flag,
+        risk_reason: enrichment.risk_reason,
+    };
+    let json = serde_json::to_string(&ServerMessage::Enriched(patch))?;
+    let _: () = conn.publish(&channel, json).await?;
     Ok(())
 }
 

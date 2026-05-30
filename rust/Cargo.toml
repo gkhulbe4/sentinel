@@ -27,7 +27,7 @@ futures-util = "0.3"
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "json"] }
-# async-openai is added to the matcher in phase 8.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Faster, smaller release binaries for the hot-path services.
 # Expanded/measured in Phase 10.

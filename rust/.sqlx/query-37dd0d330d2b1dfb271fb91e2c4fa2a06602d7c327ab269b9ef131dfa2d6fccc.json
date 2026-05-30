@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE \"Alert\"\n        SET explanation = $2, \"riskFlag\" = $3, \"riskReason\" = $4\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "37dd0d330d2b1dfb271fb91e2c4fa2a06602d7c327ab269b9ef131dfa2d6fccc"
+}
