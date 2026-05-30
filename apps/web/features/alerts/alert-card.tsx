@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Sparkles } from "lucide-react";
 import {
   type Alert,
@@ -12,7 +13,14 @@ import { cn } from "@/lib/cn";
 import { RiskBadge } from "./risk-badge";
 import { summarizeEvent } from "./summarize";
 
-export function AlertCard({ alert, animate = false }: { alert: Alert; animate?: boolean }) {
+// Memoized so prepending/patching one alert doesn't re-render the whole feed.
+export const AlertCard = memo(function AlertCard({
+  alert,
+  animate = false,
+}: {
+  alert: Alert;
+  animate?: boolean;
+}) {
   const { event } = alert;
   return (
     <Card className={cn("p-4", animate && "animate-alert-in")}>
@@ -60,4 +68,4 @@ export function AlertCard({ alert, animate = false }: { alert: Alert; animate?: 
       </div>
     </Card>
   );
-}
+});

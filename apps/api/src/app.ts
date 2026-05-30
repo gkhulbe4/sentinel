@@ -1,11 +1,12 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import type { Env } from "./env";
 import { redisPlugin } from "./plugins/redis";
 import { prismaPlugin } from "./plugins/prisma";
 import { authPlugin } from "./plugins/auth";
 import { websocketPlugin } from "./plugins/websocket";
-import { registerErrorHandler } from "./lib/errors";
+import { AppError, registerErrorHandler } from "./lib/errors";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
 import { ruleRoutes } from "./routes/rules";
@@ -28,6 +29,23 @@ export async function buildServer(env: Env): Promise<FastifyInstance> {
   await app.register(redisPlugin);
   await app.register(prismaPlugin);
   await app.register(authPlugin);
+
+  // Distributed rate limiting backed by Redis (per-IP), excluding /health.
+  await app.register(rateLimit, {
+    redis: app.redis,
+    max: 120,
+    timeWindow: "1 minute",
+    allowList: (req) => req.url === "/health",
+    // @fastify/rate-limit throws the builder's result; returning an AppError lets
+    // the central handler render it as a 429 with our standard error shape.
+    errorResponseBuilder: (_req, context) =>
+      new AppError(
+        429,
+        "RATE_LIMITED",
+        `Too many requests. Retry in ${Math.ceil(context.ttl / 1000)}s.`,
+      ),
+  });
+
   await app.register(websocketPlugin);
 
   registerErrorHandler(app);

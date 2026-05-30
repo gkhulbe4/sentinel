@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Activity, Bell, ListChecks, Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Activity },
@@ -46,10 +47,11 @@ export function AppShell({ email, children }: { email?: string | null; children:
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {email ? (
               <span className="hidden text-sm text-gray-500 md:inline">{email}</span>
             ) : null}
+            <ThemeToggle />
             <SignOutButton />
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { toast } from "sonner";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
@@ -40,9 +41,13 @@ export function RuleForm() {
       onSuccess: () => {
         setWalletAddr("");
         setMinUsd("");
+        toast.success("Rule added");
       },
-      onError: (err) =>
-        setError(err instanceof ApiError ? err.message : "Failed to create rule"),
+      onError: (err) => {
+        const message = err instanceof ApiError ? err.message : "Failed to create rule";
+        setError(message);
+        toast.error(message);
+      },
     });
   }
 

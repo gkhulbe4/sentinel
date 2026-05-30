@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { EVENT_TYPE_LABELS, formatUsd, shortenAddress } from "@sentinel/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,12 @@ export function RuleList() {
               variant="ghost"
               size="icon"
               aria-label="Delete rule"
-              onClick={() => remove.mutate(rule.id)}
+              onClick={() =>
+                remove.mutate(rule.id, {
+                  onSuccess: () => toast.success("Rule removed"),
+                  onError: () => toast.error("Failed to remove rule"),
+                })
+              }
             >
               <Trash2 className="h-4 w-4" />
             </Button>

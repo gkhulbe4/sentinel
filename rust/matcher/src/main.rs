@@ -10,7 +10,7 @@ mod db;
 mod enrich;
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use futures_util::StreamExt;
@@ -20,7 +20,7 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tokio::sync::{mpsc, Semaphore};
 use tokio::time::{interval, MissedTickBehavior};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use sentinel_core::constants::{channel_alerts, CHANNEL_EVENTS, CHANNEL_RULES_CHANGED_PREFIX};
@@ -158,6 +158,7 @@ async fn process_job(
     config: &Config,
     job: AlertJob,
 ) -> anyhow::Result<()> {
+    let started = Instant::now();
     let AlertJob { event, rule } = job;
     let id = Uuid::new_v4().to_string();
     let created_at = chrono::Utc::now().to_rfc3339();
@@ -190,6 +191,8 @@ async fn process_job(
     };
     let json = serde_json::to_string(&ServerMessage::Alert(Box::new(alert)))?;
     let _: () = conn.publish(&channel, json).await?;
+    // Match -> deliver latency (perf budget §8: p95 < 150ms). Enable with RUST_LOG=debug.
+    debug!(elapsed_ms = started.elapsed().as_millis() as u64, "alert delivered");
 
     // 2) Enrich (async), persist, and publish a patch the frontend applies.
     let enrichment = enrich::enrich_event(&mut conn, config, &event).await;

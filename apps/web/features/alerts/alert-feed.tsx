@@ -22,6 +22,9 @@ export function AlertFeed({ alerts }: { alerts: Alert[] }) {
   return (
     <div
       ref={parentRef}
+      role="log"
+      aria-live="polite"
+      aria-label="Live alerts"
       className="h-[calc(100vh-260px)] min-h-80 overflow-auto rounded-xl border border-gray-200 dark:border-gray-800"
     >
       <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
