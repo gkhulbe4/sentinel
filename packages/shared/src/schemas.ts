@@ -65,18 +65,37 @@ export const credentialsSchema = z.object({
 
 // --- Watch-rule API inputs ---
 
-export const createRuleSchema = z.object({
+const ruleFields = z.object({
   eventType: eventTypeSchema,
-  walletAddr: z.string().trim().min(1).max(64).optional(),
+  walletAddr: z.string().trim().min(32).max(64).optional(),
   minUsd: z.number().positive().max(1_000_000_000).optional(),
   isActive: z.boolean().optional(),
 });
 
-export const updateRuleSchema = createRuleSchema.partial().refine(
-  (v) => Object.keys(v).length > 0,
-  { message: "At least one field is required" },
-);
+const requireWalletForActivity = (v: { eventType: string; walletAddr?: string }): boolean =>
+  v.eventType !== "WALLET_ACTIVITY" || Boolean(v.walletAddr);
+
+export const createRuleSchema = ruleFields.refine(requireWalletForActivity, {
+  message: "walletAddr is required for WALLET_ACTIVITY rules",
+  path: ["walletAddr"],
+});
+
+export const updateRuleSchema = ruleFields
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, { message: "At least one field is required" });
+
+/** Watch rule as returned by the API (includes server-managed fields). */
+export const ruleDtoSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  eventType: eventTypeSchema,
+  walletAddr: z.string().nullable(),
+  minUsd: z.number().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
 
 export type Credentials = z.infer<typeof credentialsSchema>;
 export type CreateRuleInput = z.infer<typeof createRuleSchema>;
 export type UpdateRuleInput = z.infer<typeof updateRuleSchema>;
+export type RuleDto = z.infer<typeof ruleDtoSchema>;

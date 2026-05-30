@@ -7,6 +7,8 @@ import { authPlugin } from "./plugins/auth";
 import { registerErrorHandler } from "./lib/errors";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
+import { ruleRoutes } from "./routes/rules";
+import { alertRoutes } from "./routes/alerts";
 
 /** Build a fully-wired Fastify instance (no `listen`). */
 export async function buildServer(env: Env): Promise<FastifyInstance> {
@@ -30,6 +32,8 @@ export async function buildServer(env: Env): Promise<FastifyInstance> {
 
   await app.register(healthRoutes);
   await app.register(authRoutes);
+  await app.register(ruleRoutes);
+  await app.register(alertRoutes);
 
   return app;
 }
