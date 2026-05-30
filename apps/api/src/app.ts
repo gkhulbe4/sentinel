@@ -4,6 +4,7 @@ import type { Env } from "./env";
 import { redisPlugin } from "./plugins/redis";
 import { prismaPlugin } from "./plugins/prisma";
 import { authPlugin } from "./plugins/auth";
+import { websocketPlugin } from "./plugins/websocket";
 import { registerErrorHandler } from "./lib/errors";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
@@ -27,6 +28,7 @@ export async function buildServer(env: Env): Promise<FastifyInstance> {
   await app.register(redisPlugin);
   await app.register(prismaPlugin);
   await app.register(authPlugin);
+  await app.register(websocketPlugin);
 
   registerErrorHandler(app);
 
