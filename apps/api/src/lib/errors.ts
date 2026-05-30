@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { ZodError } from "zod";
 
 /** A typed, client-safe error. The handler renders it as `{ error: { code, message } }`. */
 export class AppError extends Error {
@@ -40,6 +41,14 @@ export function registerErrorHandler(app: FastifyInstance): void {
       void reply.status(error.statusCode).send({
         error: { code: error.code, message: error.message },
       });
+      return;
+    }
+
+    if (error instanceof ZodError) {
+      const message = error.issues
+        .map((i) => `${i.path.join(".") || "(body)"}: ${i.message}`)
+        .join("; ");
+      void reply.status(400).send({ error: { code: "VALIDATION", message } });
       return;
     }
 
