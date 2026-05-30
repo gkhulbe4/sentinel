@@ -1,13 +1,25 @@
-// Placeholder entrypoint. Phase 2 builds the real service here:
-// Fastify (HTTP) + `ws` (WebSocket), Zod-validated env, pino logging,
-// /health, central error handler, CORS, graceful shutdown, Prisma + ioredis.
+import { loadEnv } from "./env";
+import { buildServer } from "./app";
 
-function main(): void {
-  console.log("[api] placeholder running — Fastify + ws server arrives in Phase 2");
+async function main(): Promise<void> {
+  const env = loadEnv();
+  const app = await buildServer(env);
+
+  const shutdown = (signal: NodeJS.Signals): void => {
+    app.log.info({ signal }, "shutting down");
+    void app.close().then(() => {
+      process.exit(0);
+    });
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
+  try {
+    await app.listen({ port: env.PORT, host: env.HOST });
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
 }
 
-main();
-
-// Keep the process alive so `turbo run dev` shows the service as running.
-// Replaced by `fastify.listen(...)` in Phase 2.
-setInterval(() => void 0, 60_000);
+void main();
