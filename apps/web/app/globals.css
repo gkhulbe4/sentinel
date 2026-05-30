@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+/* Class-based dark mode (toggled in Phase 10). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-alert-in {
+  animation: alert-in 0.35s ease-out;
+}

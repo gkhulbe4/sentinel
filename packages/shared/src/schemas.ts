@@ -22,7 +22,9 @@ export const onChainEventSchema = z.object({
   amountSol: z.number().nullable(),
   usdValue: z.number().nullable(),
   tokenMint: z.string().nullable(),
-  raw: z.unknown(),
+  // `z.custom<unknown>()` keeps `raw` a required `unknown` key so the inferred
+  // type matches the ts-rs-generated OnChainEvent exactly.
+  raw: z.custom<unknown>(() => true),
 });
 
 export const enrichmentSchema = z.object({
