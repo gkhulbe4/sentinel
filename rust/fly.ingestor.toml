@@ -1,0 +1,15 @@
+# Fly.io config for the ingestor worker (no public port). Deploy from repo root:
+#   fly deploy --config rust/fly.ingestor.toml --dockerfile rust/Dockerfile .
+app = "sentinel-ingestor"
+primary_region = "iad"
+
+[build]
+dockerfile = "rust/Dockerfile"
+
+# Run the ingestor binary from the shared Rust image.
+[processes]
+app = "sentinel-ingestor"
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "256mb"

@@ -1,7 +1,12 @@
-# Local infra for Sentinel. Phase 0 brings up Postgres + Redis only; Phase 11
-# adds the api / ingestor / matcher service containers.
+# Local infra + full backend for Sentinel.
+#   docker compose up -d                      # Postgres + Redis only (dev)
+#   docker compose --profile full up --build  # entire backend (api, ingestor, matcher)
 #
 # Values default sensibly, or come from a local `.env` (copy from .env.example).
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD:-sentinel}@postgres:5432/${POSTGRES_DB:-sentinel}
+  REDIS_URL: redis://redis:6379
 
 services:
   postgres:
@@ -34,6 +39,75 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # One-shot: apply Prisma migrations, then exit. Other services wait for it.
+  migrate:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    environment:
+      <<: *backend-env
+    command: ["pnpm", "--filter", "@sentinel/db", "exec", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      <<: *backend-env
+      NODE_ENV: production
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-please-1234567890}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  ingestor:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: rust/Dockerfile
+    command: ["sentinel-ingestor"]
+    environment:
+      <<: *backend-env
+      EVENT_SOURCE: ${EVENT_SOURCE:-mock}
+      MOCK_EVENTS_PER_SEC: ${MOCK_EVENTS_PER_SEC:-2}
+      HELIUS_GRPC_URL: ${HELIUS_GRPC_URL:-}
+      HELIUS_API_KEY: ${HELIUS_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  matcher:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: rust/Dockerfile
+    command: ["sentinel-matcher"]
+    environment:
+      <<: *backend-env
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-nano}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:
