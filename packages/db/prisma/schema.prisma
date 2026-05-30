@@ -1,0 +1,51 @@
+// Sentinel schema. Prisma owns the Postgres schema + migrations; the Rust
+// services read/write the same tables via sqlx.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String      @id @default(cuid())
+  email     String      @unique
+  password  String
+  createdAt DateTime    @default(now())
+  rules     WatchRule[]
+  alerts    Alert[]
+}
+
+model WatchRule {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType  String // SOL_TRANSFER | TOKEN_SWAP | NEW_TOKEN | WALLET_ACTIVITY
+  walletAddr String?
+  minUsd     Float?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  alerts     Alert[]
+
+  @@index([userId, isActive])
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleId      String
+  rule        WatchRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  eventType   String
+  signature   String
+  payload     Json
+  explanation String?
+  riskFlag    String?
+  riskReason  String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
