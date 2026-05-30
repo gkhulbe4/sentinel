@@ -1,0 +1,10 @@
+[package]
+name = "sentinel-ingestor"
+description = "Solana stream (Helius Yellowstone gRPC) -> normalized events -> Redis."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+sentinel-core = { workspace = true }
+# Phase 5: tokio, redis, yellowstone-grpc-client, serde_json, tracing, config.

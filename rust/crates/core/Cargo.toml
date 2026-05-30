@@ -1,0 +1,9 @@
+[package]
+name = "sentinel-core"
+description = "Shared Sentinel domain types, match_rule logic, decoders, and constants."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+# Populated in Phase 1: serde (+derive), serde_json, ts-rs, thiserror.

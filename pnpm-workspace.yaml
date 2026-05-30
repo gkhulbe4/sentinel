@@ -1,0 +1,5 @@
+# JS/TS workspaces. The Rust services live in `rust/` as a separate Cargo
+# workspace and are driven from root `rust:*` scripts (not pnpm packages).
+packages:
+  - "apps/*"
+  - "packages/*"

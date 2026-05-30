@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "ingestor", "matcher"]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "MIT"
+
+[workspace.dependencies]
+sentinel-core = { path = "crates/core" }
+# External shared deps (serde, serde_json, tokio, redis, sqlx, async-openai,
+# ts-rs, tracing, anyhow, thiserror, …) are added here per-phase as they're used.
+
+# Faster, smaller release binaries for the hot-path services.
+# Expanded/measured in Phase 10.
+[profile.release]
+lto = "thin"
+codegen-units = 1

@@ -1,0 +1,6 @@
+# Pin the Rust toolchain so builds are reproducible and match CI.
+# First `cargo` invocation will have rustup fetch this toolchain.
+[toolchain]
+channel = "stable"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

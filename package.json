@@ -1,0 +1,36 @@
+{
+  "name": "sentinel",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @sentinel/db migrate",
+    "db:studio": "pnpm --filter @sentinel/db studio",
+    "rust:check": "cargo check --manifest-path rust/Cargo.toml --all-targets",
+    "rust:clippy": "cargo clippy --manifest-path rust/Cargo.toml --all-targets --all-features -- -D warnings",
+    "rust:test": "cargo test --manifest-path rust/Cargo.toml",
+    "rust:build": "cargo build --release --manifest-path rust/Cargo.toml",
+    "rust:fmt": "cargo fmt --manifest-path rust/Cargo.toml --all",
+    "check": "pnpm typecheck && pnpm lint && pnpm rust:check && pnpm rust:clippy"
+  },
+  "devDependencies": {
+    "@sentinel/config": "workspace:*",
+    "prettier": "^3.4.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp"]
+  }
+}
