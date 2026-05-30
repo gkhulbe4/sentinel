@@ -13,8 +13,20 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ts-rs = "10"
 thiserror = "2"
-# Service deps (tokio, redis, sqlx, async-openai, tracing, anyhow, envy, uuid,
-# rand, chrono, futures-util) are added here per-phase as they're used.
+# Service deps
+tokio = { version = "1", features = ["full"] }
+redis = { version = "0.27", features = ["tokio-comp"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = "0.1"
+envy = "0.4"
+dotenvy = "0.15"
+rand = "0.8"
+futures-util = "0.3"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+# sqlx + async-openai are added to the matcher in phases 6/8.
 
 # Faster, smaller release binaries for the hot-path services.
 # Expanded/measured in Phase 10.
