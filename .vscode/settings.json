@@ -1,0 +1,6 @@
+{
+  "//": "The installed Prisma CLI is 6.x, which requires `url = env(\"DATABASE_URL\")` in the datasource block. A Prisma 7-aware editor extension strips that line on save (it moved to prisma.config.ts in v7). Disable format-on-save for .prisma files so the schema stays valid for the v6 CLI used by migrate/generate.",
+  "[prisma]": {
+    "editor.formatOnSave": false
+  }
+}
