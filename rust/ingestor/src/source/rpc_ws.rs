@@ -30,8 +30,9 @@ use crate::config::Config;
 use crate::price::SolPrice;
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
-/// How often to re-read the watched-wallet set from the DB.
-const REFRESH_INTERVAL: Duration = Duration::from_secs(20);
+/// How often to re-read the watched-wallet set from the DB (so newly added rules
+/// start streaming, and removed/paused ones stop, promptly).
+const REFRESH_INTERVAL: Duration = Duration::from_secs(8);
 
 pub struct WebSocketRpcEventSource {
     ws_url: String,

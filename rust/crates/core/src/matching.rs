@@ -1,20 +1,23 @@
 //! The pure rule-matching core. Deliberately allocation-free and side-effect
 //! free so it is trivially testable and fast on the hot path.
 
-use crate::types::{OnChainEvent, WatchRule};
+use crate::types::{EventType, OnChainEvent, WatchRule};
 
 /// Returns `true` if `event` satisfies `rule`.
 ///
 /// A rule matches when, conjunctively:
 /// - the rule is active,
-/// - the event type equals the rule's type,
+/// - the event type equals the rule's type — except a `WALLET_ACTIVITY` rule,
+///   which is a catch-all that matches *any* event type for its pinned wallet,
 /// - if the rule pins a wallet, the event's `wallet` or `counterparty` equals it,
 /// - if the rule sets a USD threshold, the event's `usd_value` is `>=` it.
 pub fn match_rule(event: &OnChainEvent, rule: &WatchRule) -> bool {
     if !rule.is_active {
         return false;
     }
-    if event.event_type != rule.event_type {
+    // WALLET_ACTIVITY tracks everything a wallet does, so it ignores the event
+    // type; every other rule type requires an exact match.
+    if rule.event_type != EventType::WalletActivity && event.event_type != rule.event_type {
         return false;
     }
     if let Some(addr) = rule.wallet_addr.as_deref() {
@@ -123,6 +126,19 @@ mod tests {
         let mut r = rule(EventType::WalletActivity);
         r.wallet_addr = Some("WALLET_Z".into());
         assert!(!match_rule(&event(EventType::WalletActivity), &r));
+    }
+
+    #[test]
+    fn wallet_activity_is_catch_all_for_its_wallet() {
+        let mut r = rule(EventType::WalletActivity);
+        r.wallet_addr = Some("WALLET_A".into());
+        // A swap *by the watched wallet* matches the wallet-activity rule.
+        assert!(match_rule(&event(EventType::TokenSwap), &r));
+        // ...but a swap by an unrelated wallet does not.
+        let mut other = event(EventType::TokenSwap);
+        other.wallet = "WALLET_Z".into();
+        other.counterparty = None;
+        assert!(!match_rule(&other, &r));
     }
 
     #[test]
