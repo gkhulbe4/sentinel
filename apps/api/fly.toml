@@ -1,6 +1,6 @@
 # Fly.io config for the API (public). Deploy from the repo root:
 #   fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile .
-app = "sentinel-api"
+app = "sentinel-api-v1"
 primary_region = "iad"
 
 [build]

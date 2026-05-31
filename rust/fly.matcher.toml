@@ -1,6 +1,6 @@
 # Fly.io config for the matcher worker (no public port). Deploy from repo root:
 #   fly deploy --config rust/fly.matcher.toml --dockerfile rust/Dockerfile .
-app = "sentinel-matcher"
+app = "sentinel-matcher-v1"
 primary_region = "iad"
 
 [build]

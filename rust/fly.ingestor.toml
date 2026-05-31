@@ -1,6 +1,6 @@
 # Fly.io config for the ingestor worker (no public port). Deploy from repo root:
 #   fly deploy --config rust/fly.ingestor.toml --dockerfile rust/Dockerfile .
-app = "sentinel-ingestor"
+app = "sentinel-ingestor-v1"
 primary_region = "iad"
 
 [build]
