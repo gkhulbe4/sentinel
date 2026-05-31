@@ -19,14 +19,10 @@ const rand58 = (len: number) =>
   Array.from({ length: len }, () => BASE58[Math.floor(Math.random() * BASE58.length)]).join("");
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)] as T;
 
-function makeSampleAlert(): Alert {
-  const eventType = pick<EventType>([
-    "TOKEN_SWAP",
-    "TOKEN_SWAP",
-    "SOL_TRANSFER",
-    "NEW_TOKEN",
-    "WALLET_ACTIVITY",
-  ]);
+function makeSampleAlert(forceType?: EventType): Alert {
+  const eventType =
+    forceType ??
+    pick<EventType>(["TOKEN_SWAP", "TOKEN_SWAP", "SOL_TRANSFER", "NEW_TOKEN", "WALLET_ACTIVITY"]);
   const signature = rand58(72);
   const wallet = rand58(44);
   const slot = 423_400_000 + Math.floor(Math.random() * 200_000);
@@ -94,17 +90,17 @@ const SEED = 4;
 const MAX = 40;
 const INTERVAL_MS = 2600;
 
-export function useSampleStream(active: boolean): Alert[] {
+export function useSampleStream(active: boolean, eventType?: EventType): Alert[] {
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
     if (!active) return;
-    setAlerts(Array.from({ length: SEED }, makeSampleAlert));
+    setAlerts(Array.from({ length: SEED }, () => makeSampleAlert(eventType)));
     const id = setInterval(() => {
-      setAlerts((prev) => [makeSampleAlert(), ...prev].slice(0, MAX));
+      setAlerts((prev) => [makeSampleAlert(eventType), ...prev].slice(0, MAX));
     }, INTERVAL_MS);
     return () => clearInterval(id);
-  }, [active]);
+  }, [active, eventType]);
 
   return alerts;
 }

@@ -1,20 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  AlertTriangle,
-  ArrowLeftRight,
-  Coins,
-  ExternalLink,
-  Loader2,
-  Send,
-  Sparkles,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { AlertTriangle, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import {
   type Alert,
-  type EventType,
   EVENT_TYPE_LABELS,
   formatSol,
   formatUsd,
@@ -26,15 +15,9 @@ import {
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RiskBadge } from "./risk-badge";
+import { EVENT_ICON } from "./event-meta";
 import { summarizeEvent } from "./summarize";
 import { useAlertEnrichment } from "./use-enrichment";
-
-const EVENT_ICON: Record<EventType, LucideIcon> = {
-  TOKEN_SWAP: ArrowLeftRight,
-  SOL_TRANSFER: Send,
-  NEW_TOKEN: Coins,
-  WALLET_ACTIVITY: Wallet,
-};
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -69,7 +52,7 @@ export function AlertDetailsDialog({
   onClose: () => void;
 }) {
   const { event } = alert;
-  const Icon = EVENT_ICON[alert.eventType] ?? Wallet;
+  const Icon = EVENT_ICON[alert.eventType];
 
   // Already-enriched alerts (cached real ones, or sample data) skip the API call.
   const preEnriched = alert.explanation != null && alert.riskFlag != null;
