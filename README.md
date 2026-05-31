@@ -1,5 +1,8 @@
 # Sentinel
 
+https://github.com/user-attachments/assets/47fdc5ec-fa92-45aa-b485-11463fd700b4
+
+
 A production-quality, real-time **Solana watchtower**. Create watch rules and the
 instant matching on-chain activity happens, a live alert is pushed to your
 dashboard — typically in well under a second on mock data. Open any alert for an
