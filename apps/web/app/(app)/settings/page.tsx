@@ -15,8 +15,8 @@ export default async function SettingsPage() {
         <CardContent>
           <dl className="flex flex-col gap-2 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-500">Email</dt>
-              <dd className="font-medium">{session?.user?.email}</dd>
+              <dt className="text-muted-foreground">Email</dt>
+              <dd className="font-medium text-foreground">{session?.user?.email}</dd>
             </div>
           </dl>
         </CardContent>

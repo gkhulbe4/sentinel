@@ -20,13 +20,17 @@ interface ApiOptions {
 
 /** Typed fetch against the Sentinel API. Throws `ApiError` on non-2xx. */
 export async function apiFetch<T>(path: string, opts: ApiOptions = {}): Promise<T> {
+  // Only declare a JSON content-type when we actually send a body — Fastify
+  // rejects an application/json request with an empty body (e.g. bodyless
+  // POST /alerts/:id/enrich or DELETE /rules/:id).
+  const hasBody = opts.body !== undefined;
   const res = await fetch(`${API_URL}${path}`, {
     method: opts.method ?? "GET",
     headers: {
-      "content-type": "application/json",
+      ...(hasBody ? { "content-type": "application/json" } : {}),
       ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}),
     },
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    body: hasBody ? JSON.stringify(opts.body) : undefined,
     signal: opts.signal,
   });
   if (!res.ok) {

@@ -19,7 +19,7 @@ export default function AlertsPage() {
           ))}
         </div>
       ) : isError ? (
-        <p className="text-sm text-red-600">Failed to load alerts.</p>
+        <p className="text-sm text-destructive">Failed to load alerts.</p>
       ) : !data || data.length === 0 ? (
         <EmptyState
           icon={<Bell className="h-8 w-8" />}

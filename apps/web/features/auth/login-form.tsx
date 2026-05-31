@@ -1,66 +1,98 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
+
+import { authFooterLinkClass } from "@/components/auth/auth-chrome";
+import { AuthField } from "@/components/auth/auth-field";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+interface LoginValues {
+  email: string;
+  password: string;
+}
+
+const authInputClass = "h-10 text-base md:text-sm";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const nextHref = params.get("callbackUrl") ?? "/dashboard";
+  const [formError, setFormError] = useState<string | null>(null);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    defaultValues: { email: "", password: "" },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+  });
+
+  async function onSubmit(values: LoginValues) {
+    setFormError(null);
+    const res = await signIn("credentials", {
+      email: values.email,
+      password: values.password,
+      redirect: false,
+    });
     if (!res || res.error) {
-      setError("Invalid email or password");
+      setFormError("Those details don’t match an account. Check them or create a new one.");
       return;
     }
-    router.push(params.get("callbackUrl") ?? "/dashboard");
+    router.push(nextHref);
     router.refresh();
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <AuthField id="login-email" label="Email" error={errors.email?.message}>
         <Input
-          id="email"
+          id="login-email"
           type="email"
           autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          aria-invalid={errors.email ? true : undefined}
+          className={authInputClass}
+          {...register("email", {
+            required: "Enter your email",
+            pattern: { value: EMAIL_RE, message: "Enter a valid email address" },
+            onChange: () => setFormError(null),
+          })}
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
+      </AuthField>
+      <AuthField id="login-password" label="Password" error={errors.password?.message}>
+        <PasswordInput
+          id="login-password"
           autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          aria-invalid={errors.password ? true : undefined}
+          className={authInputClass}
+          {...register("password", { required: "Enter your password", onChange: () => setFormError(null) })}
         />
-      </div>
-      {error ? (
-        <p role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
+      </AuthField>
+
+      {formError ? (
+        <div className="rounded-lg border border-border bg-muted/30 px-3.5 py-3 text-sm leading-relaxed text-muted-foreground">
+          {formError}
+        </div>
       ) : null}
-      <Button type="submit" disabled={loading}>
-        {loading ? "Signing in…" : "Sign in"}
+
+      <Button className="h-10 w-full" type="submit" loading={isSubmitting}>
+        {isSubmitting ? "Signing in…" : "Sign in"}
       </Button>
+
+      <p className="text-sm leading-normal text-pretty text-muted-foreground">
+        Don’t have an account?{" "}
+        <Link href="/signup" className={authFooterLinkClass}>
+          Sign up
+        </Link>
+      </p>
     </form>
   );
 }

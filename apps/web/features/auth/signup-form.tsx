@@ -1,70 +1,129 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
+
 import { ApiError, apiFetch } from "@/lib/api";
+import { authFooterLinkClass } from "@/components/auth/auth-chrome";
+import { AuthField } from "@/components/auth/auth-field";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+interface SignupValues {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+const authInputClass = "h-10 text-base md:text-sm";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function SignupForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupValues>({
+    defaultValues: { email: "", password: "", confirmPassword: "" },
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+  });
+
+  async function onSubmit(values: SignupValues) {
+    setFormError(null);
     try {
-      await apiFetch("/auth/signup", { method: "POST", body: { email, password } });
-      const res = await signIn("credentials", { email, password, redirect: false });
+      await apiFetch("/auth/signup", {
+        method: "POST",
+        body: { email: values.email, password: values.password },
+      });
+      const res = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
+      });
       if (!res || res.error) throw new Error("Could not sign in after signup");
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not create account");
-      setLoading(false);
+      setFormError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not create your account. Please try again.",
+      );
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">Email</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <AuthField id="signup-email" label="Email" error={errors.email?.message}>
         <Input
-          id="email"
+          id="signup-email"
           type="email"
           autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          aria-invalid={errors.email ? true : undefined}
+          className={authInputClass}
+          {...register("email", {
+            required: "Enter your email",
+            pattern: { value: EMAIL_RE, message: "Enter a valid email address" },
+            onChange: () => setFormError(null),
+          })}
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
+      </AuthField>
+
+      <AuthField id="signup-password" label="Password" error={errors.password?.message}>
+        <PasswordInput
+          id="signup-password"
           autoComplete="new-password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          aria-invalid={errors.password ? true : undefined}
+          className={authInputClass}
+          {...register("password", {
+            required: "Create a password",
+            minLength: { value: 8, message: "Password must be at least 8 characters" },
+          })}
         />
-        <p className="text-xs text-gray-500">At least 8 characters.</p>
-      </div>
-      {error ? (
-        <p role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
+      </AuthField>
+
+      <AuthField
+        id="signup-confirm"
+        label="Confirm password"
+        error={errors.confirmPassword?.message}
+      >
+        <PasswordInput
+          id="signup-confirm"
+          autoComplete="new-password"
+          aria-invalid={errors.confirmPassword ? true : undefined}
+          className={authInputClass}
+          {...register("confirmPassword", {
+            required: "Re-enter your password",
+            validate: (v) => v === getValues("password") || "Passwords do not match",
+          })}
+        />
+      </AuthField>
+
+      {formError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm leading-relaxed text-destructive">
+          {formError}
+        </div>
       ) : null}
-      <Button type="submit" disabled={loading}>
-        {loading ? "Creating account…" : "Create account"}
+
+      <Button className="h-10 w-full" type="submit" loading={isSubmitting}>
+        {isSubmitting ? "Creating account…" : "Create account"}
       </Button>
+
+      <p className="text-sm leading-normal text-pretty text-muted-foreground">
+        Already have an account?{" "}
+        <Link href="/login" className={authFooterLinkClass}>
+          Sign in
+        </Link>
+      </p>
     </form>
   );
 }

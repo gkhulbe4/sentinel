@@ -22,7 +22,7 @@ export function RuleList() {
     );
   }
   if (query.isError) {
-    return <p className="text-sm text-red-600">Failed to load rules.</p>;
+    return <p className="text-sm text-destructive">Failed to load rules.</p>;
   }
 
   const rules = query.data ?? [];
@@ -40,14 +40,14 @@ export function RuleList() {
       {rules.map((rule) => (
         <li
           key={rule.id}
-          className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:border-primary/40"
         >
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium">{EVENT_TYPE_LABELS[rule.eventType]}</span>
+              <span className="font-medium text-foreground">{EVENT_TYPE_LABELS[rule.eventType]}</span>
               {!rule.isActive ? <Badge variant="neutral">paused</Badge> : null}
             </div>
-            <div className="flex flex-wrap gap-x-3 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
               {rule.walletAddr ? <span>wallet {shortenAddress(rule.walletAddr)}</span> : null}
               {rule.minUsd != null ? <span>min {formatUsd(rule.minUsd)}</span> : null}
             </div>
@@ -62,7 +62,7 @@ export function RuleList() {
             </Button>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               aria-label="Delete rule"
               onClick={() =>
                 remove.mutate(rule.id, {

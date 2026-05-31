@@ -13,7 +13,7 @@ export function WalletInput({
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor="walletAddr">
-        Wallet address {required ? <span className="text-red-500">*</span> : "(optional)"}
+        Wallet address {required ? <span className="text-destructive">*</span> : "(optional)"}
       </Label>
       <Input
         id="walletAddr"
