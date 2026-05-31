@@ -10,6 +10,21 @@ blocking, when the consumer falls behind).
 - **`mock`** (default) — `MockEventSource` emits realistic fake swaps, transfers,
   new-token launches, and wallet activity at `MOCK_EVENTS_PER_SEC`. Drives the
   whole local demo with no external dependencies.
+- **`rpc`** (FREE real data) — `WebSocketRpcEventSource` uses a standard Solana
+  RPC WebSocket (Helius/QuickNode **free** tier, or the public endpoint). It
+  `logsSubscribe`s to each address in `RPC_WATCH_ACCOUNTS`, fetches each matching
+  transaction with `getTransaction`, and classifies it via
+  `sentinel_core::decode::classify`. No paid plan, no public URL, no `protoc`.
+  Free tiers rate-limit `getTransaction`, so watch a handful of specific
+  wallets/programs rather than the whole chain. Enable with:
+
+  ```bash
+  EVENT_SOURCE=rpc \
+    RPC_WS_URL=wss://mainnet.helius-rpc.com/?api-key=… \
+    RPC_HTTP_URL=https://mainnet.helius-rpc.com/?api-key=… \
+    RPC_WATCH_ACCOUNTS=Wallet1,Program2 \
+    cargo run -p sentinel-ingestor
+  ```
 - **`yellowstone`** — `YellowstoneEventSource` connects to a Helius Yellowstone
   gRPC (Geyser) stream of confirmed, non-vote transactions, reduces each to
   proto-free facts, and classifies them via `sentinel_core::decode::classify`
@@ -39,7 +54,10 @@ redis-cli subscribe events
 | Var                   | Default | Purpose                                  |
 | --------------------- | ------- | ---------------------------------------- |
 | `REDIS_URL`           | —       | Redis to publish `events` to (required)  |
-| `EVENT_SOURCE`        | `mock`  | `mock` \| `yellowstone`                  |
+| `EVENT_SOURCE`        | `mock`  | `mock` \| `rpc` \| `yellowstone`         |
 | `MOCK_EVENTS_PER_SEC` | `2`     | Mock emission rate                       |
+| `RPC_WS_URL`          | —       | WebSocket RPC (rpc mode)                 |
+| `RPC_HTTP_URL`        | —       | HTTP RPC for getTransaction (rpc mode)   |
+| `RPC_WATCH_ACCOUNTS`  | —       | Comma-separated addresses (rpc mode)     |
 | `HELIUS_GRPC_URL`     | —       | Yellowstone endpoint (yellowstone mode)  |
 | `HELIUS_API_KEY`      | —       | Helius key (yellowstone mode)            |

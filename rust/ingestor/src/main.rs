@@ -16,6 +16,7 @@ use sentinel_core::OnChainEvent;
 
 use crate::config::Config;
 use crate::source::mock::MockEventSource;
+use crate::source::rpc_ws::WebSocketRpcEventSource;
 use crate::source::yellowstone::YellowstoneEventSource;
 use crate::source::EventSource;
 
@@ -48,8 +49,11 @@ async fn main() -> anyhow::Result<()> {
 fn build_source(config: &Config) -> anyhow::Result<Box<dyn EventSource>> {
     match config.event_source.as_str() {
         "mock" => Ok(Box::new(MockEventSource::new(config.mock_events_per_sec))),
+        "rpc" => Ok(Box::new(WebSocketRpcEventSource::from_config(config)?)),
         "yellowstone" => Ok(Box::new(YellowstoneEventSource::from_config(config)?)),
-        other => anyhow::bail!("unknown EVENT_SOURCE '{other}' (expected 'mock' or 'yellowstone')"),
+        other => {
+            anyhow::bail!("unknown EVENT_SOURCE '{other}' (expected 'mock', 'rpc', or 'yellowstone')")
+        }
     }
 }
 

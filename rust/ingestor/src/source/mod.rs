@@ -2,6 +2,7 @@ use sentinel_core::OnChainEvent;
 use tokio::sync::mpsc;
 
 pub mod mock;
+pub mod rpc_ws;
 pub mod yellowstone;
 
 /// A source of normalized on-chain events. Implementations push events into the

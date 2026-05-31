@@ -120,17 +120,19 @@ Upstash. See [DEPLOY.md](DEPLOY.md) (includes an AWS ECS Fargate alternative).
 
 ## Real events
 
-The default pipeline runs on the **mock ingestor**. For real Solana data, point a
-**Helius "Enhanced transactions" webhook** at the API's `POST /webhooks/helius`:
-it normalizes Helius's pre-decoded transactions (with a live SOL→USD price) and
-publishes them to the same Redis `events` channel the matcher consumes — so the
-matcher/alerts/WS pipeline is byte-for-byte identical to mock. No `protoc`, no
-extra worker; the mock ingestor just isn't run in this mode. Setup steps are in
-[DEPLOY.md](DEPLOY.md). For market-wide coverage instead of address-based
-webhooks, run the ingestor in **Yellowstone gRPC** mode
-(`EVENT_SOURCE=yellowstone` + a Helius gRPC endpoint; needs `protoc` to build) —
-it classifies the Geyser firehose into the same events. See
-[ingestor/README](rust/ingestor/README.md).
+The default pipeline runs on the **mock ingestor**. Three real-data sources feed
+the same Redis `events` channel (so the matcher/alerts/WS pipeline is identical):
+
+- **`rpc` — free, recommended to start.** Run the ingestor with a **free**
+  Helius/QuickNode RPC key: it `logsSubscribe`s to the wallets/programs in
+  `RPC_WATCH_ACCOUNTS`, fetches each tx, and classifies it. No paid plan, no
+  public URL, no `protoc`. Set `EVENT_SOURCE=rpc` (+ `RPC_WS_URL`, `RPC_HTTP_URL`,
+  `RPC_WATCH_ACCOUNTS`). See [ingestor/README](rust/ingestor/README.md).
+- **Helius webhooks** — free too; point an Enhanced-transactions webhook at the
+  API's `POST /webhooks/helius` (Helius pre-decodes; needs a public URL — ngrok
+  locally). Setup in [DEPLOY.md](DEPLOY.md).
+- **`yellowstone` — paid.** Market-wide Geyser gRPC firehose
+  (`EVENT_SOURCE=yellowstone`; needs `protoc` + a Helius gRPC plan).
 
 ## Notes / scope
 
