@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, type Transition } from "motion/react";
 import { SectionShell } from "./section-shell";
+import { SentinelLogoMark } from "@/components/brand/sentinel-logo";
 import { cn } from "@/lib/cn";
 import { aleo, hostGrotesk } from "./fonts";
 import { LANDING_ROUTES } from "@/lib/landing-routes";
@@ -30,7 +31,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: "Is this real on-chain data?",
-    a: "Sentinel ships with a mock event source for demos, plus a documented Yellowstone (Helius gRPC) seam so you can stream live Solana data through the exact same pipeline.",
+    a: "Yes — point it at a free Helius/QuickNode RPC key and it watches the wallets in your rules live. There's also a Helius webhook path and a paid Yellowstone gRPC firehose for market-wide coverage.",
   },
   {
     q: "What does it take to run?",
@@ -51,17 +52,43 @@ export function FaqSection() {
       }
       subtitle="Everything you need to know about Sentinel — rules, alerts, AI analysis, and running it."
     >
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        {FAQS.map((item, i) => (
-          <FaqRow
-            key={item.q}
-            item={item}
-            isOpen={openIndex === i}
-            isLast={i === FAQS.length - 1}
-            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
-          />
-        ))}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-5">
+          <div className="lg:col-span-3 lg:border-r lg:border-border">
+            {FAQS.map((item, i) => (
+              <FaqRow
+                key={item.q}
+                item={item}
+                isOpen={openIndex === i}
+                isLast={i === FAQS.length - 1}
+                onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+              />
+            ))}
+          </div>
+
+          {/* Visual aside (right) */}
+          <aside className="relative min-h-56 overflow-hidden sm:min-h-72 lg:col-span-2 lg:min-h-0">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/25 via-orange-600/10 to-background" />
+            <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
+            <div
+              aria-hidden
+              className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-[60%] rounded-full bg-orange-500/30 blur-3xl"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <SentinelLogoMark size={96} className="rounded-2xl shadow-2xl" />
+            </div>
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-5 sm:p-6">
+              <p className="text-balance text-base font-semibold leading-snug tracking-tight text-white">
+                Watch Solana where it happens.
+              </p>
+              <p className="mt-1 text-pretty text-xs leading-relaxed text-white/75">
+                Real-time on-chain monitoring with AI risk analysis on every alert.
+              </p>
+            </div>
+          </aside>
+        </div>
       </div>
+
       <p className="mt-6 text-sm text-pretty text-muted-foreground">
         Still have questions?{" "}
         <Link
