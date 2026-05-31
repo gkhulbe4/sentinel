@@ -2,12 +2,12 @@
 //! against an in-memory cache of active rules, persist matched alerts, and
 //! publish them to the per-user `alerts:{userId}` channel. Matching is inline
 //! and fast; DB work runs on a bounded worker pool so a slow database never
-//! blocks event consumption.
+//! blocks event consumption. AI analysis is computed on demand by the API when
+//! a user opens an alert (see apps/api `POST /alerts/:id/enrich`).
 
 mod cache;
 mod config;
 mod db;
-mod enrich;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -24,7 +24,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use sentinel_core::constants::{channel_alerts, CHANNEL_EVENTS, CHANNEL_RULES_CHANGED_PREFIX};
-use sentinel_core::{Alert, AlertEnrichedPatch, OnChainEvent, ServerMessage, WatchRule};
+use sentinel_core::{Alert, OnChainEvent, ServerMessage, WatchRule};
 
 use crate::cache::RuleCache;
 use crate::config::Config;
@@ -60,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
     info!(rules = cache.len().await, "loaded active rules");
 
     let (job_tx, job_rx) = mpsc::channel::<AlertJob>(JOB_CAPACITY);
-    tokio::spawn(worker_loop(job_rx, pool.clone(), publish_conn, config.clone()));
+    tokio::spawn(worker_loop(job_rx, pool.clone(), publish_conn));
     tokio::spawn(periodic_refresh(pool.clone(), cache.clone(), config.rule_refresh_secs));
 
     run_event_loop(&redis_client, cache, pool, job_tx).await
@@ -128,12 +128,11 @@ async fn run_event_loop(
     Ok(())
 }
 
-/// Bounded worker pool: each job persists + publishes an alert, then enriches.
+/// Bounded worker pool: each job persists + publishes an alert.
 async fn worker_loop(
     mut rx: mpsc::Receiver<AlertJob>,
     pool: PgPool,
     conn: MultiplexedConnection,
-    config: Arc<Config>,
 ) {
     let sem = Arc::new(Semaphore::new(MAX_CONCURRENT_JOBS));
     while let Some(job) = rx.recv().await {
@@ -142,10 +141,9 @@ async fn worker_loop(
         };
         let pool = pool.clone();
         let conn = conn.clone();
-        let config = config.clone();
         tokio::spawn(async move {
             let _permit = permit;
-            if let Err(err) = process_job(&pool, conn, &config, job).await {
+            if let Err(err) = process_job(&pool, conn, job).await {
                 error!(%err, "alert job failed");
             }
         });
@@ -155,7 +153,6 @@ async fn worker_loop(
 async fn process_job(
     pool: &PgPool,
     mut conn: MultiplexedConnection,
-    config: &Config,
     job: AlertJob,
 ) -> anyhow::Result<()> {
     let started = Instant::now();
@@ -176,9 +173,10 @@ async fn process_job(
     )
     .await?;
 
-    // 1) Deliver the alert immediately (unenriched).
+    // Deliver the alert immediately. AI analysis (explanation + risk) is computed
+    // on demand by the API when the user opens the alert, not eagerly here.
     let alert = Alert {
-        id: id.clone(),
+        id,
         user_id: rule.user_id.clone(),
         rule_id: rule.id,
         event_type: event.event_type,
@@ -193,25 +191,6 @@ async fn process_job(
     let _: () = conn.publish(&channel, json).await?;
     // Match -> deliver latency (perf budget §8: p95 < 150ms). Enable with RUST_LOG=debug.
     debug!(elapsed_ms = started.elapsed().as_millis() as u64, "alert delivered");
-
-    // 2) Enrich (async), persist, and publish a patch the frontend applies.
-    let enrichment = enrich::enrich_event(&mut conn, config, &event).await;
-    db::update_enrichment(
-        pool,
-        &id,
-        &enrichment.explanation,
-        enrichment.risk_flag.as_db_str(),
-        enrichment.risk_reason.as_deref(),
-    )
-    .await?;
-    let patch = AlertEnrichedPatch {
-        id,
-        explanation: enrichment.explanation,
-        risk_flag: enrichment.risk_flag,
-        risk_reason: enrichment.risk_reason,
-    };
-    let json = serde_json::to_string(&ServerMessage::Enriched(patch))?;
-    let _: () = conn.publish(&channel, json).await?;
     Ok(())
 }
 

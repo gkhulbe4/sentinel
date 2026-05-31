@@ -15,7 +15,7 @@ ts-rs = "10"
 thiserror = "2"
 # Service deps
 tokio = { version = "1", features = ["full"] }
-redis = { version = "0.27", features = ["tokio-comp"] }
+redis = { version = "0.27", features = ["tokio-comp", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

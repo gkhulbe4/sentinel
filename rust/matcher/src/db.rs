@@ -62,27 +62,3 @@ pub async fn insert_alert(
     .await?;
     Ok(())
 }
-
-/// Attach AI enrichment to an existing alert.
-pub async fn update_enrichment(
-    pool: &PgPool,
-    id: &str,
-    explanation: &str,
-    risk_flag: &str,
-    risk_reason: Option<&str>,
-) -> anyhow::Result<()> {
-    sqlx::query!(
-        r#"
-        UPDATE "Alert"
-        SET explanation = $2, "riskFlag" = $3, "riskReason" = $4
-        WHERE id = $1
-        "#,
-        id,
-        explanation,
-        risk_flag,
-        risk_reason
-    )
-    .execute(pool)
-    .await?;
-    Ok(())
-}

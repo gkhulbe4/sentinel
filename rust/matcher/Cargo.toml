@@ -1,6 +1,6 @@
 [package]
 name = "sentinel-matcher"
-description = "Consumes events, matches active rules, persists + enriches alerts."
+description = "Consumes events, matches active rules, persists + publishes alerts."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
@@ -20,4 +20,3 @@ dotenvy = { workspace = true }
 futures-util = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
-reqwest = { workspace = true }

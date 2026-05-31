@@ -12,6 +12,12 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
+
+  // --- AI enrichment (on demand, via POST /alerts/:id/enrich) ---
+  // When OPENAI_API_KEY is empty/absent, enrichment falls back to a local heuristic.
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  OPENAI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
 });
 
 export type Env = z.infer<typeof envSchema>;

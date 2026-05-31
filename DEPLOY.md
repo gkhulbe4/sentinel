@@ -38,15 +38,15 @@ the `rediss://` scheme.
 | `EVENT_SOURCE`    | ingestor               | `mock` (default) or `yellowstone`      |
 | `HELIUS_GRPC_URL` | ingestor               | for `yellowstone` (see note)           |
 | `HELIUS_API_KEY`  | ingestor               | for `yellowstone`                      |
-| `OPENAI_API_KEY`  | matcher                | optional; heuristic fallback otherwise |
-| `OPENAI_MODEL`    | matcher                | default `gpt-5.4-nano`                  |
+| `OPENAI_API_KEY`  | api                    | on-demand enrich; heuristic fallback   |
+| `OPENAI_MODEL`    | api                    | default `gpt-4o-mini`                   |
 
 ## 4. Fly.io — api (public)
 
 ```bash
 cd /repo
 fly launch --no-deploy --copy-config --dockerfile apps/api/Dockerfile --config apps/api/fly.toml
-fly secrets set DATABASE_URL=… REDIS_URL=… JWT_SECRET=… CORS_ORIGIN=https://<web>.vercel.app -a sentinel-api
+fly secrets set DATABASE_URL=… REDIS_URL=… JWT_SECRET=… CORS_ORIGIN=https://<web>.vercel.app OPENAI_API_KEY=… -a sentinel-api
 fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile .
 ```
 Note the public URL, e.g. `https://sentinel-api.fly.dev` (WS at `wss://sentinel-api.fly.dev/ws`).
@@ -59,7 +59,7 @@ fly deploy --config rust/fly.ingestor.toml --dockerfile rust/Dockerfile .
 fly secrets set REDIS_URL=… EVENT_SOURCE=mock -a sentinel-ingestor
 # matcher
 fly deploy --config rust/fly.matcher.toml --dockerfile rust/Dockerfile .
-fly secrets set DATABASE_URL=… REDIS_URL=… OPENAI_API_KEY=… -a sentinel-matcher
+fly secrets set DATABASE_URL=… REDIS_URL=… -a sentinel-matcher
 ```
 Both are worker apps (no public port). The Rust image ships sqlx offline
 metadata, so the build needs no database.
@@ -85,7 +85,7 @@ Deploy. Then update the api's `CORS_ORIGIN` to the final Vercel URL and redeploy
 
 1. Open the Vercel URL, sign up, add a `TOKEN_SWAP` rule with min USD `1000`.
 2. The dashboard shows the **Live** status and alerts streaming in (mock).
-3. Each alert's risk badge + explanation patches in a moment later.
+3. Click **Open** on an alert for on-demand AI analysis (risk + explanation).
 
 ## 8. Enable real Solana (Yellowstone)
 

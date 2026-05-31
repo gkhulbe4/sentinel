@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@sentinel/db";
-import type { Alert, EventType, OnChainEvent, RiskFlag } from "@sentinel/shared";
+import type { Alert, Enrichment, EventType, OnChainEvent, RiskFlag } from "@sentinel/shared";
 
 export interface AlertPage {
   alerts: Alert[];
@@ -38,5 +38,18 @@ export const alertsRepo = {
     }));
 
     return { alerts, nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null };
+  },
+
+  /** Single alert (with its event payload + any stored enrichment), or null. */
+  async findById(prisma: PrismaClient, id: string) {
+    return prisma.alert.findUnique({ where: { id } });
+  },
+
+  /** Persist on-demand AI analysis onto an alert. */
+  async saveEnrichment(prisma: PrismaClient, id: string, e: Enrichment): Promise<void> {
+    await prisma.alert.update({
+      where: { id },
+      data: { explanation: e.explanation, riskFlag: e.riskFlag, riskReason: e.riskReason },
+    });
   },
 };
