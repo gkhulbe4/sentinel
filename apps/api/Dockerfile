@@ -14,6 +14,13 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @sentinel/db generate
 RUN pnpm --filter api build
 RUN pnpm --filter api deploy --prod --legacy /deploy
+# pnpm deploy omits Prisma's post-install-generated client (the schema-specific
+# query code + native query engine). Copy it into the deployed store entry, next
+# to @prisma/client, so the runtime can load it.
+RUN set -eux; \
+  src="$(ls -d node_modules/.pnpm/@prisma+client@*/node_modules)"; \
+  dst="$(ls -d /deploy/node_modules/.pnpm/@prisma+client@*/node_modules)"; \
+  cp -r "$src/.prisma" "$dst/.prisma"
 
 FROM base AS runtime
 WORKDIR /app

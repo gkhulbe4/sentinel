@@ -14,6 +14,7 @@
     "@fastify/cors": "^10.0.1",
     "@fastify/jwt": "^9.0.1",
     "@fastify/rate-limit": "^10.1.1",
+    "@prisma/client": "^6.2.0",
     "@sentinel/db": "workspace:*",
     "@sentinel/shared": "workspace:*",
     "bcryptjs": "^2.4.3",
