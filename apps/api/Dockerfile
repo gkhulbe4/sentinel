@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile
 # then produce a self-contained deployment with prod-only dependencies.
 RUN pnpm --filter @sentinel/db generate
 RUN pnpm --filter api build
-RUN pnpm --filter api deploy --prod /deploy
+RUN pnpm --filter api deploy --prod --legacy /deploy
 
 FROM base AS runtime
 WORKDIR /app
