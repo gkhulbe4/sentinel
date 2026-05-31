@@ -4,6 +4,7 @@
 //! publisher provides backpressure.
 
 mod config;
+mod price;
 mod publisher;
 mod source;
 

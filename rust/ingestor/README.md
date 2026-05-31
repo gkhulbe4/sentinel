@@ -11,15 +11,19 @@ blocking, when the consumer falls behind).
   new-token launches, and wallet activity at `MOCK_EVENTS_PER_SEC`. Drives the
   whole local demo with no external dependencies.
 - **`yellowstone`** — `YellowstoneEventSource` connects to a Helius Yellowstone
-  gRPC stream and decodes updates via `sentinel_core::decode`. The gRPC client
-  (`yellowstone-grpc-client`) is **not compiled into this build** — it needs
-  `protoc` at build time and a live Helius endpoint + key, so it's left as a
-  documented seam. Selecting it without wiring it up exits with a clear error.
+  gRPC (Geyser) stream of confirmed, non-vote transactions, reduces each to
+  proto-free facts, and classifies them via `sentinel_core::decode::classify`
+  (SOL transfers / swaps / new tokens / wallet activity) attaching a live
+  SOL→USD price. It reconnects with a fixed backoff. **Building it needs `protoc`**
+  (`brew install protobuf` / `apt-get install protobuf-compiler`). Enable with:
 
-  To enable: add `yellowstone-grpc-client`/`yellowstone-grpc-proto` deps, install
-  `protoc`, implement `run()` to subscribe to transactions and call the
-  `decode_*` helpers, then set `EVENT_SOURCE=yellowstone`, `HELIUS_GRPC_URL`, and
-  `HELIUS_API_KEY`.
+  ```bash
+  EVENT_SOURCE=yellowstone HELIUS_GRPC_URL=… HELIUS_API_KEY=… cargo run -p sentinel-ingestor
+  ```
+
+  Classification is meta-driven (pre/post balances, token-balance deltas, logs)
+  and best-effort. By default it streams the whole firehose; narrow
+  `subscribe_request()`'s `account_include` to watch specific programs/wallets.
 
 ## Run
 

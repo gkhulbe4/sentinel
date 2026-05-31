@@ -9,6 +9,10 @@ COPY rust/ .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
+# protoc is required to compile yellowstone-grpc-proto (the Geyser gRPC firehose).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends protobuf-compiler \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=planner /app/recipe.json recipe.json
 # Build & cache dependencies only — this layer is reused until deps change.
 RUN cargo chef cook --release --recipe-path recipe.json

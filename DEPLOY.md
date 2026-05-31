@@ -113,15 +113,20 @@ mock. No `protoc`, no extra worker; you don't run the mock ingestor in this mode
 > as the webhook URL. Verify the endpoint with a sample payload:
 > `curl -X POST localhost:3001/webhooks/helius -H 'content-type: application/json' -d '[{"signature":"sig","slot":1,"type":"TRANSFER","feePayer":"W","nativeTransfers":[{"amount":5000000000}]}]'`
 
-### Market-wide firehose (advanced)
+### Market-wide firehose (Yellowstone gRPC)
 
-Webhooks are address-based. For market-wide watching, implement the gRPC stream
-in `rust/ingestor/src/source/yellowstone.rs` (`yellowstone-grpc-client`, decoding
-via `sentinel_core::decode`; needs `protoc` in the Rust Dockerfile builder and a
-Helius gRPC plan), then:
+Webhooks are address-based. For market-wide coverage, run the **ingestor** in
+Yellowstone mode: it streams the Geyser firehose of confirmed transactions and
+classifies each (`rust/ingestor/src/source/yellowstone.rs`) into SOL transfers /
+swaps / new tokens / wallet activity, with a live SOL→USD price. It needs a
+Helius **gRPC** endpoint + key (a paid Helius plan); `protoc` is already in the
+Rust Dockerfile builder. Run the ingestor alongside the matcher (no webhook
+needed) and set:
 ```bash
 fly secrets set EVENT_SOURCE=yellowstone HELIUS_GRPC_URL=… HELIUS_API_KEY=… -a sentinel-ingestor
 ```
+Classification is meta-driven and best-effort; narrow `subscribe_request()`'s
+`account_include` to watch specific programs/wallets instead of the full firehose.
 
 ## 9. AWS ECS Fargate alternative (reference)
 

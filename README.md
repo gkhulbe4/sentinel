@@ -126,9 +126,11 @@ it normalizes Helius's pre-decoded transactions (with a live SOL→USD price) an
 publishes them to the same Redis `events` channel the matcher consumes — so the
 matcher/alerts/WS pipeline is byte-for-byte identical to mock. No `protoc`, no
 extra worker; the mock ingestor just isn't run in this mode. Setup steps are in
-[DEPLOY.md](DEPLOY.md). For a market-wide firehose instead of address-based
-webhooks, the Yellowstone gRPC source is a documented seam
-(`rust/ingestor/src/source/yellowstone.rs`; needs `protoc` + a Helius gRPC plan).
+[DEPLOY.md](DEPLOY.md). For market-wide coverage instead of address-based
+webhooks, run the ingestor in **Yellowstone gRPC** mode
+(`EVENT_SOURCE=yellowstone` + a Helius gRPC endpoint; needs `protoc` to build) —
+it classifies the Geyser firehose into the same events. See
+[ingestor/README](rust/ingestor/README.md).
 
 ## Notes / scope
 

@@ -18,3 +18,8 @@ async-trait = { workspace = true }
 envy = { workspace = true }
 dotenvy = { workspace = true }
 rand = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+bs58 = { workspace = true }
+yellowstone-grpc-client = "13.1.0"
+yellowstone-grpc-proto = "12.4.0"
