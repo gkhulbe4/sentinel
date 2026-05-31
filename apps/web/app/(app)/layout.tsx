@@ -4,5 +4,9 @@ import { AppShell } from "@/components/app-shell";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await auth();
-  return <AppShell email={session?.user?.email}>{children}</AppShell>;
+  return (
+    <AppShell email={session?.user?.email} name={session?.user?.name}>
+      {children}
+    </AppShell>
+  );
 }

@@ -7,10 +7,14 @@ export default function WatchlistPage() {
   return (
     <div>
       <PageHeader title="Watchlist" description="Rules that trigger your live alerts." />
-      <div className="grid gap-6 md:grid-cols-[320px_1fr]">
+      <div className="grid gap-6 md:grid-cols-[340px_1fr]">
         <Card className="h-fit">
           <CardHeader>
             <CardTitle>Add a rule</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Add a <span className="font-medium text-foreground">wallet address</span> to watch its
+              live on-chain activity. Leave it empty for sample data.
+            </p>
           </CardHeader>
           <CardContent>
             <RuleForm />

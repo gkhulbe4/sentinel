@@ -5,7 +5,7 @@ import { API_URL } from "@/lib/config";
 
 interface LoginResponse {
   token: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; name: string | null };
 }
 
 /**
@@ -28,7 +28,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
         if (!res.ok) return null;
         const data = (await res.json()) as LoginResponse;
-        return { id: data.user.id, email: data.user.email, apiToken: data.token };
+        return {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          apiToken: data.token,
+        };
       },
     }),
   ],
@@ -36,6 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     jwt({ token, user }) {
       if (user) {
         token.uid = user.id;
+        token.name = user.name ?? null;
         token.apiToken = (user as { apiToken?: string }).apiToken;
       }
       return token;
@@ -43,6 +49,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session({ session, token }) {
       const uid = token.uid as string | undefined;
       if (uid) session.user.id = uid;
+      if (session.user) session.user.name = (token.name as string | null) ?? null;
       session.apiToken = token.apiToken as string | undefined;
       return session;
     },

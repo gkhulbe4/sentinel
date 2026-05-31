@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface SignupValues {
+  name: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -32,7 +33,7 @@ export function SignupForm() {
     getValues,
     formState: { errors, isSubmitting },
   } = useForm<SignupValues>({
-    defaultValues: { email: "", password: "", confirmPassword: "" },
+    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
@@ -42,7 +43,7 @@ export function SignupForm() {
     try {
       await apiFetch("/auth/signup", {
         method: "POST",
-        body: { email: values.email, password: values.password },
+        body: { name: values.name, email: values.email, password: values.password },
       });
       const res = await signIn("credentials", {
         email: values.email,
@@ -63,6 +64,21 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <AuthField id="signup-name" label="Name" error={errors.name?.message}>
+        <Input
+          id="signup-name"
+          type="text"
+          autoComplete="name"
+          aria-invalid={errors.name ? true : undefined}
+          className={authInputClass}
+          {...register("name", {
+            required: "Enter your name",
+            maxLength: { value: 80, message: "Name is too long" },
+            onChange: () => setFormError(null),
+          })}
+        />
+      </AuthField>
+
       <AuthField id="signup-email" label="Email" error={errors.email?.message}>
         <Input
           id="signup-email"

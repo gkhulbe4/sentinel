@@ -65,6 +65,12 @@ export const credentialsSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+/** Signup adds a display name to the login credentials. */
+export const signupSchema = credentialsSchema.extend({
+  name: z.string().trim().min(1, "Enter your name").max(80),
+});
+export type SignupInput = z.infer<typeof signupSchema>;
+
 // --- Watch-rule API inputs ---
 
 const ruleFields = z.object({

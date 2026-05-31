@@ -29,7 +29,30 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppShell({ email, children }: { email?: string | null; children: ReactNode }) {
+function Avatar({ label, className }: { label?: string | null; className?: string }) {
+  const initial = (label?.trim()?.[0] ?? "?").toUpperCase();
+  return (
+    <div
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary",
+        className,
+      )}
+      aria-hidden
+    >
+      {initial}
+    </div>
+  );
+}
+
+export function AppShell({
+  email,
+  name,
+  children,
+}: {
+  email?: string | null;
+  name?: string | null;
+  children: ReactNode;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -37,16 +60,15 @@ export function AppShell({ email, children }: { email?: string | null; children:
 
   return (
     <div className="fixed inset-0 flex overflow-hidden bg-background">
-      {/* Desktop sidebar */}
       <Sidebar
         className="hidden md:flex"
         collapsed={collapsed}
         pathname={pathname}
         email={email}
+        name={name}
         onToggleCollapse={() => setCollapsed((c) => !c)}
       />
 
-      {/* Mobile drawer */}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} aria-hidden />
@@ -55,12 +77,12 @@ export function AppShell({ email, children }: { email?: string | null; children:
             collapsed={false}
             pathname={pathname}
             email={email}
+            name={name}
             onNavigate={() => setMobileOpen(false)}
           />
         </div>
       ) : null}
 
-      {/* Main: floating panel with topbar */}
       <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-border bg-card md:rounded-xl md:border md:shadow-[0_2px_24px_-6px_rgba(0,0,0,0.5)]">
           <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6">
@@ -73,9 +95,9 @@ export function AppShell({ email, children }: { email?: string | null; children:
               <Menu className="h-5 w-5" />
             </button>
             <h1 className="text-sm font-semibold tracking-tight text-foreground">{title}</h1>
-            {email ? (
-              <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">{email}</span>
-            ) : null}
+            <div className="ml-auto flex items-center gap-1">
+              <ThemeToggle />
+            </div>
           </header>
           <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>
@@ -88,6 +110,7 @@ function Sidebar({
   collapsed,
   pathname,
   email,
+  name,
   className,
   onToggleCollapse,
   onNavigate,
@@ -95,6 +118,7 @@ function Sidebar({
   collapsed: boolean;
   pathname: string;
   email?: string | null;
+  name?: string | null;
   className?: string;
   onToggleCollapse?: () => void;
   onNavigate?: () => void;
@@ -182,17 +206,23 @@ function Sidebar({
         })}
       </nav>
 
-      {/* Footer — account */}
-      <div className={cn("flex shrink-0 flex-col gap-2 border-t border-border/60 p-2", collapsed && "items-center")}>
-        {!collapsed && email ? (
-          <span className="truncate px-1 text-xs text-muted-foreground" title={email}>
-            {email}
-          </span>
-        ) : null}
-        <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
-          <ThemeToggle />
-          <SignOutButton collapsed={collapsed} />
-        </div>
+      {/* Footer — user */}
+      <div className="shrink-0 border-t border-border/60 p-2">
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <Avatar label={name ?? email} />
+            <SignOutButton collapsed />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-lg px-1.5 py-1">
+            <Avatar label={name ?? email} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-foreground">{name ?? "Account"}</div>
+              {email ? <div className="truncate text-xs text-muted-foreground">{email}</div> : null}
+            </div>
+            <SignOutButton collapsed />
+          </div>
+        )}
       </div>
     </aside>
   );

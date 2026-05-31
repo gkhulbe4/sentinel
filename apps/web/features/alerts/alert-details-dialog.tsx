@@ -27,7 +27,12 @@ export function AlertDetailsDialog({
   onClose: () => void;
 }) {
   const { event } = alert;
-  const { data, isLoading, isError, refetch } = useAlertEnrichment(alert.id, open);
+  // Already-enriched alerts (cached real ones, or sample data) skip the API call.
+  const preEnriched = alert.explanation != null && alert.riskFlag != null;
+  const { data, isLoading, isError, refetch } = useAlertEnrichment(alert.id, open && !preEnriched);
+  const analysis = preEnriched
+    ? { explanation: alert.explanation as string, riskFlag: alert.riskFlag, riskReason: alert.riskReason }
+    : data;
 
   return (
     <Dialog open={open} onClose={onClose} title={EVENT_TYPE_LABELS[alert.eventType]}>
@@ -94,7 +99,15 @@ export function AlertDetailsDialog({
           AI analysis
         </div>
 
-        {isLoading ? (
+        {analysis ? (
+          <div className="mt-2 space-y-2">
+            <RiskBadge flag={analysis.riskFlag} />
+            <p className="text-sm text-foreground">{analysis.explanation}</p>
+            {analysis.riskReason ? (
+              <p className="text-xs text-muted-foreground">{analysis.riskReason}</p>
+            ) : null}
+          </div>
+        ) : isLoading ? (
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Analyzing event…
@@ -108,12 +121,6 @@ export function AlertDetailsDialog({
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
               Retry
             </Button>
-          </div>
-        ) : data ? (
-          <div className="mt-2 space-y-2">
-            <RiskBadge flag={data.riskFlag} />
-            <p className="text-sm text-foreground">{data.explanation}</p>
-            {data.riskReason ? <p className="text-xs text-muted-foreground">{data.riskReason}</p> : null}
           </div>
         ) : null}
       </div>

@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { credentialsSchema } from "@sentinel/shared";
+import { credentialsSchema, signupSchema } from "@sentinel/shared";
 import * as authService from "../services/auth";
 import { httpError } from "../lib/errors";
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post("/auth/signup", async (req, reply) => {
-    const { email, password } = credentialsSchema.parse(req.body);
-    const user = await authService.signup(app.prisma, email, password);
+    const { email, password, name } = signupSchema.parse(req.body);
+    const user = await authService.signup(app.prisma, email, password, name);
     const token = app.signToken({ sub: user.id, email: user.email });
     void reply.status(201);
     return { token, user };
