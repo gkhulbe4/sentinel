@@ -121,7 +121,7 @@ impl WebSocketRpcEventSource {
                     let Some(message) = maybe else { break };
                     match message.context("ws read")? {
                         Message::Text(text) => {
-                            self.on_text(text.as_str(), tx, price, http).await;
+                            self.on_text(text.as_str(), &watched, tx, price, http).await;
                             if tx.is_closed() {
                                 return Ok(()); // publisher gone
                             }
@@ -151,6 +151,7 @@ impl WebSocketRpcEventSource {
     async fn on_text(
         &self,
         text: &str,
+        watched: &[String],
         tx: &mpsc::Sender<OnChainEvent>,
         price: &SolPrice,
         http: &reqwest::Client,
@@ -170,7 +171,9 @@ impl WebSocketRpcEventSource {
         };
         match self.fetch_facts(http, signature).await {
             Ok(Some(facts)) => {
-                let _ = tx.send(classify(&facts, price.get().await)).await;
+                let mut event = classify(&facts, price.get().await);
+                attribute_watched(&mut event, &facts, watched);
+                let _ = tx.send(event).await;
             }
             Ok(None) => {}
             Err(err) => debug!(%err, signature, "getTransaction failed"),
@@ -223,6 +226,21 @@ impl EventSource for WebSocketRpcEventSource {
             }
             tokio::time::sleep(RECONNECT_DELAY).await;
         }
+    }
+}
+
+/// Ensure a watched address is reflected in the event so a rule pinned to it
+/// matches — even when the watched address (e.g. a DEX/program) isn't the fee
+/// payer. The ingestor only ever receives txns that mention a watched address.
+fn attribute_watched(event: &mut OnChainEvent, facts: &TxFacts, watched: &[String]) {
+    let is_watched = |a: &str| watched.iter().any(|w| w == a);
+    // If the fee payer is watched, a rule already matches via `wallet`.
+    if is_watched(&event.wallet) {
+        return;
+    }
+    // Otherwise surface a watched participant as the counterparty so the rule matches.
+    if let Some(addr) = facts.account_keys.iter().find(|k| is_watched(k)) {
+        event.counterparty = Some(addr.clone());
     }
 }
 
