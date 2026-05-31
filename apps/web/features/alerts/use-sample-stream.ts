@@ -86,6 +86,11 @@ function makeSampleAlert(forceType?: EventType): Alert {
   };
 }
 
+/** A fixed batch of sample alerts (for static lists like the history page). */
+export function generateSampleAlerts(count: number, eventType?: EventType): Alert[] {
+  return Array.from({ length: count }, () => makeSampleAlert(eventType));
+}
+
 const SEED = 4;
 const MAX = 40;
 const INTERVAL_MS = 2600;
