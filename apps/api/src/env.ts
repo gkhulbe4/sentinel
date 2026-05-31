@@ -18,6 +18,11 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4o-mini"),
   OPENAI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+
+  // --- Real on-chain events via Helius webhooks (POST /webhooks/helius) ---
+  // If set, the webhook requires this exact `Authorization` header value (set the
+  // same value as the webhook's auth header in the Helius dashboard).
+  HELIUS_WEBHOOK_AUTH: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

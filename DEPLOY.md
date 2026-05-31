@@ -87,11 +87,38 @@ Deploy. Then update the api's `CORS_ORIGIN` to the final Vercel URL and redeploy
 2. The dashboard shows the **Live** status and alerts streaming in (mock).
 3. Click **Open** on an alert for on-demand AI analysis (risk + explanation).
 
-## 8. Enable real Solana (Yellowstone)
+## 8. Real events (Helius webhooks) — recommended
 
-Implement the gRPC stream in `rust/ingestor/src/source/yellowstone.rs`
-(`yellowstone-grpc-client`, decoding via `sentinel_core::decode`; needs `protoc`
-in the Rust Dockerfile builder). Then:
+The matcher consumes the Redis `events` channel. The API exposes
+`POST /webhooks/helius`, which accepts Helius **Enhanced transactions**,
+normalizes them (with a live SOL→USD price), and publishes to that channel — so
+real data flows through the exact same matcher → alerts → WebSocket pipeline as
+mock. No `protoc`, no extra worker; you don't run the mock ingestor in this mode.
+
+1. Create a Helius account → an API key (helius.dev).
+2. Pick a shared secret and set it on the API:
+   ```bash
+   fly secrets set HELIUS_WEBHOOK_AUTH=<random-secret> -a sentinel-api
+   ```
+3. Create a webhook (Helius dashboard → Webhooks, or the API):
+   - **Type:** Enhanced
+   - **Webhook URL:** `https://sentinel-api.fly.dev/webhooks/helius`
+   - **Authorization header:** the same `<random-secret>`
+   - **Account addresses:** the wallets/programs to watch (e.g. wallets your users
+     add as rules, a DEX program, or pump.fun). Webhooks are address-based.
+   - **Transaction types:** `SWAP`, `TRANSFER`, `TOKEN_MINT`, … (or "any").
+4. Activity on those addresses now streams into the dashboard as live alerts.
+
+> **Local testing:** expose the API with `ngrok http 3001` and use the ngrok URL
+> as the webhook URL. Verify the endpoint with a sample payload:
+> `curl -X POST localhost:3001/webhooks/helius -H 'content-type: application/json' -d '[{"signature":"sig","slot":1,"type":"TRANSFER","feePayer":"W","nativeTransfers":[{"amount":5000000000}]}]'`
+
+### Market-wide firehose (advanced)
+
+Webhooks are address-based. For market-wide watching, implement the gRPC stream
+in `rust/ingestor/src/source/yellowstone.rs` (`yellowstone-grpc-client`, decoding
+via `sentinel_core::decode`; needs `protoc` in the Rust Dockerfile builder and a
+Helius gRPC plan), then:
 ```bash
 fly secrets set EVENT_SOURCE=yellowstone HELIUS_GRPC_URL=… HELIUS_API_KEY=… -a sentinel-ingestor
 ```

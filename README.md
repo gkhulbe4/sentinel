@@ -102,6 +102,7 @@ pnpm --filter web dev                        # web still runs on the host
 | `HELIUS_GRPC_URL/KEY` | ingestor               | for `yellowstone`                       |
 | `OPENAI_API_KEY`      | api                    | on-demand enrich; heuristic fallback    |
 | `OPENAI_MODEL`        | api                    | default `gpt-4o-mini`                   |
+| `HELIUS_WEBHOOK_AUTH` | api                    | shared secret for the Helius webhook    |
 
 ## Quality gates
 
@@ -117,11 +118,21 @@ pnpm db:sqlx-prepare  # regenerate sqlx offline metadata (DB up)
 web → Vercel, api + ingestor + matcher → Fly.io, Postgres → Neon, Redis →
 Upstash. See [DEPLOY.md](DEPLOY.md) (includes an AWS ECS Fargate alternative).
 
+## Real events
+
+The default pipeline runs on the **mock ingestor**. For real Solana data, point a
+**Helius "Enhanced transactions" webhook** at the API's `POST /webhooks/helius`:
+it normalizes Helius's pre-decoded transactions (with a live SOL→USD price) and
+publishes them to the same Redis `events` channel the matcher consumes — so the
+matcher/alerts/WS pipeline is byte-for-byte identical to mock. No `protoc`, no
+extra worker; the mock ingestor just isn't run in this mode. Setup steps are in
+[DEPLOY.md](DEPLOY.md). For a market-wide firehose instead of address-based
+webhooks, the Yellowstone gRPC source is a documented seam
+(`rust/ingestor/src/source/yellowstone.rs`; needs `protoc` + a Helius gRPC plan).
+
 ## Notes / scope
 
-- The **mock pipeline is the runnable demo**. The Yellowstone gRPC source is a
-  documented seam (`rust/ingestor/src/source/yellowstone.rs`) — wiring the live
-  client needs `protoc` + a Helius key.
+- The **mock pipeline is the runnable demo**; Helius webhooks (above) add real data.
 - AI analysis is **on demand**: opening an alert calls the API's
   `POST /alerts/:id/enrich`, which uses OpenAI Structured Outputs when
   `OPENAI_API_KEY` is set (falling back to a deterministic local heuristic) and
