@@ -74,7 +74,7 @@ export function NavBar({ floatOnScroll = false }: { floatOnScroll?: boolean }) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <Link
             href={LANDING_ROUTES.login}
             className="hidden text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import { useLiveAlerts } from "@/features/alerts/use-live-alerts";
+import { useSampleStream } from "@/features/alerts/use-sample-stream";
 import { AlertFeed } from "@/features/alerts/alert-feed";
-import { SAMPLE_ALERTS } from "@/features/alerts/sample-alerts";
 import { PageHeader } from "@/components/page-header";
 import { ConnectionStatus } from "@/components/connection-status";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,9 @@ export default function DashboardPage() {
   useEffect(() => setMounted(true), []);
 
   const hasReal = alerts.length > 0;
+  const sample = useSampleStream(!hasReal);
   const showingSample = mounted && !hasReal;
-  const feed = hasReal ? alerts : SAMPLE_ALERTS;
+  const feed = hasReal ? alerts : sample;
 
   return (
     <div className="flex flex-col">
@@ -39,14 +40,14 @@ export default function DashboardPage() {
       {showingSample ? (
         <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-border bg-secondary/40 px-3.5 py-2.5 text-sm">
           <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-            <Info className="size-4 text-primary" /> Showing sample data
+            <Info className="size-4 text-primary" /> Sample data (live demo)
           </span>
           <span className="text-muted-foreground">
             — add a rule with a wallet address in the{" "}
             <Link href="/watchlist" className="font-medium text-foreground hover:text-primary">
               Watchlist
             </Link>{" "}
-            to see live on-chain activity.
+            to stream that wallet's real on-chain activity.
           </span>
         </div>
       ) : null}
