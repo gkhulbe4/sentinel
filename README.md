@@ -123,11 +123,13 @@ Upstash. See [DEPLOY.md](DEPLOY.md) (includes an AWS ECS Fargate alternative).
 The default pipeline runs on the **mock ingestor**. Three real-data sources feed
 the same Redis `events` channel (so the matcher/alerts/WS pipeline is identical):
 
-- **`rpc` — free, recommended to start.** Run the ingestor with a **free**
-  Helius/QuickNode RPC key: it `logsSubscribe`s to the wallets/programs in
-  `RPC_WATCH_ACCOUNTS`, fetches each tx, and classifies it. No paid plan, no
-  public URL, no `protoc`. Set `EVENT_SOURCE=rpc` (+ `RPC_WS_URL`, `RPC_HTTP_URL`,
-  `RPC_WATCH_ACCOUNTS`). See [ingestor/README](rust/ingestor/README.md).
+- **`rpc` — free, user-driven, recommended to start.** Run the ingestor with a
+  **free** Helius/QuickNode RPC key: it **auto-watches the wallet addresses from
+  users' active rules** (a user adding a "watch wallet X" rule makes it start
+  watching X), fetches each tx, and classifies it. No paid plan, no public URL,
+  no `protoc`. Set `EVENT_SOURCE=rpc` + `RPC_WS_URL` + `RPC_HTTP_URL` (`DATABASE_URL`
+  supplies the watched wallets). Works for wallet-pinned rules; market-wide rules
+  need `yellowstone`. See [ingestor/README](rust/ingestor/README.md).
 - **Helius webhooks** — free too; point an Enhanced-transactions webhook at the
   API's `POST /webhooks/helius` (Helius pre-decodes; needs a public URL — ngrok
   locally). Setup in [DEPLOY.md](DEPLOY.md).

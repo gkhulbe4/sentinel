@@ -1,9 +1,14 @@
 //! Free WebSocket RPC source. Works with any standard Solana RPC that exposes a
-//! WebSocket (Helius / QuickNode **free** tiers, or the public endpoint): it
-//! `logsSubscribe`s to the watched accounts, fetches each matching transaction
-//! with `getTransaction` (jsonParsed), reduces it to proto-free [`TxFacts`], and
-//! classifies it via `sentinel_core::decode::classify`. No paid plan, no public
-//! URL, no protoc — just an RPC key. Reconnects with a fixed backoff.
+//! WebSocket (Helius / QuickNode **free** tiers, or the public endpoint).
+//!
+//! It watches the wallet addresses from users' **active rules** (read from
+//! Postgres) plus any `RPC_WATCH_ACCOUNTS` extras: it `logsSubscribe`s to each,
+//! fetches every matching transaction with `getTransaction` (jsonParsed), reduces
+//! it to proto-free [`TxFacts`], and classifies it via
+//! `sentinel_core::decode::classify`. So a user adding a "watch wallet X" rule in
+//! the UI makes the ingestor start watching X — no env config, no paid plan, no
+//! public URL, no `protoc`. The watched set is re-read periodically; when it
+//! changes the stream reconnects with the new subscriptions.
 
 use std::collections::{BTreeSet, HashMap};
 use std::time::Duration;
@@ -11,9 +16,11 @@ use std::time::Duration;
 use anyhow::{anyhow, Context};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info};
 
 use sentinel_core::decode::{classify, TokenDelta, TxFacts};
 use sentinel_core::OnChainEvent;
@@ -23,11 +30,15 @@ use crate::config::Config;
 use crate::price::SolPrice;
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
+/// How often to re-read the watched-wallet set from the DB.
+const REFRESH_INTERVAL: Duration = Duration::from_secs(20);
 
 pub struct WebSocketRpcEventSource {
     ws_url: String,
     http_url: String,
-    accounts: Vec<String>,
+    database_url: String,
+    /// Extra addresses to always watch (e.g. programs), from `RPC_WATCH_ACCOUNTS`.
+    extra_accounts: Vec<String>,
 }
 
 impl WebSocketRpcEventSource {
@@ -40,7 +51,11 @@ impl WebSocketRpcEventSource {
             .rpc_http_url
             .clone()
             .ok_or_else(|| anyhow!("RPC_HTTP_URL is required for EVENT_SOURCE=rpc"))?;
-        let accounts: Vec<String> = config
+        let database_url = config
+            .database_url
+            .clone()
+            .ok_or_else(|| anyhow!("DATABASE_URL is required for EVENT_SOURCE=rpc (to read watched wallets)"))?;
+        let extra_accounts = config
             .rpc_watch_accounts
             .as_deref()
             .unwrap_or("")
@@ -49,23 +64,41 @@ impl WebSocketRpcEventSource {
             .filter(|s| !s.is_empty())
             .map(String::from)
             .collect();
-        if accounts.is_empty() {
-            warn!("RPC_WATCH_ACCOUNTS is empty — set comma-separated wallet/program addresses to watch");
-        }
-        Ok(Self { ws_url, http_url, accounts })
+        Ok(Self { ws_url, http_url, database_url, extra_accounts })
+    }
+
+    /// The set of addresses to watch: every wallet pinned by an active rule,
+    /// unioned with the static `RPC_WATCH_ACCOUNTS` extras. Sorted for stable
+    /// change-detection.
+    async fn watched_accounts(&self, pool: &PgPool) -> anyhow::Result<Vec<String>> {
+        let rows: Vec<String> = sqlx::query_scalar(
+            r#"SELECT DISTINCT "walletAddr" FROM "WatchRule" WHERE "isActive" = true AND "walletAddr" IS NOT NULL"#,
+        )
+        .fetch_all(pool)
+        .await?;
+        let mut set: BTreeSet<String> = self.extra_accounts.iter().cloned().collect();
+        set.extend(rows);
+        Ok(set.into_iter().collect())
     }
 
     async fn stream_once(
         &self,
+        pool: &PgPool,
         tx: &mpsc::Sender<OnChainEvent>,
         price: &SolPrice,
         http: &reqwest::Client,
     ) -> anyhow::Result<()> {
+        let watched = self.watched_accounts(pool).await.context("read watched wallets")?;
+        if watched.is_empty() {
+            debug!("no watched wallets yet — add a rule with a wallet address; idling");
+            tokio::time::sleep(Duration::from_secs(15)).await;
+            return Ok(());
+        }
+
         let (mut ws, _) = tokio_tungstenite::connect_async(&self.ws_url)
             .await
             .context("connect RPC websocket")?;
-
-        for (i, account) in self.accounts.iter().enumerate() {
+        for (i, account) in watched.iter().enumerate() {
             let req = json!({
                 "jsonrpc": "2.0",
                 "id": i + 1,
@@ -76,43 +109,71 @@ impl WebSocketRpcEventSource {
                 .await
                 .context("send logsSubscribe")?;
         }
-        info!(accounts = self.accounts.len(), "subscribed to RPC logs");
+        info!(accounts = watched.len(), "subscribed to RPC logs for watched wallets");
 
-        while let Some(message) = ws.next().await {
-            match message.context("ws read")? {
-                Message::Text(text) => {
-                    let Ok(value) = serde_json::from_str::<Value>(text.as_str()) else {
-                        continue;
-                    };
-                    if value.get("method").and_then(Value::as_str) != Some("logsNotification") {
-                        continue; // subscription ack or other control message
-                    }
-                    let result = &value["params"]["result"]["value"];
-                    if !result["err"].is_null() {
-                        continue; // failed transaction
-                    }
-                    let Some(signature) = result["signature"].as_str() else {
-                        continue;
-                    };
-                    match self.fetch_facts(http, signature).await {
-                        Ok(Some(facts)) => {
-                            let event = classify(&facts, price.get().await);
-                            if tx.send(event).await.is_err() {
+        let mut refresh = tokio::time::interval(REFRESH_INTERVAL);
+        refresh.tick().await; // consume the immediate first tick
+
+        loop {
+            tokio::select! {
+                maybe = ws.next() => {
+                    let Some(message) = maybe else { break };
+                    match message.context("ws read")? {
+                        Message::Text(text) => {
+                            self.on_text(text.as_str(), tx, price, http).await;
+                            if tx.is_closed() {
                                 return Ok(()); // publisher gone
                             }
                         }
-                        Ok(None) => {}
-                        Err(err) => debug!(%err, signature, "getTransaction failed"),
+                        Message::Ping(payload) => {
+                            let _ = ws.send(Message::Pong(payload)).await;
+                        }
+                        Message::Close(_) => break,
+                        _ => {}
                     }
                 }
-                Message::Ping(payload) => {
-                    let _ = ws.send(Message::Pong(payload)).await;
+                _ = refresh.tick() => {
+                    if let Ok(now) = self.watched_accounts(pool).await {
+                        if now != watched {
+                            info!(from = watched.len(), to = now.len(), "watched wallets changed; reconnecting");
+                            return Ok(());
+                        }
+                    }
                 }
-                Message::Close(_) => break,
-                _ => {}
             }
         }
         Ok(())
+    }
+
+    /// Handle one WS text frame: parse a `logsNotification`, fetch + classify the
+    /// transaction, and publish the event. No-op for acks / failed txns.
+    async fn on_text(
+        &self,
+        text: &str,
+        tx: &mpsc::Sender<OnChainEvent>,
+        price: &SolPrice,
+        http: &reqwest::Client,
+    ) {
+        let Ok(value) = serde_json::from_str::<Value>(text) else {
+            return;
+        };
+        if value.get("method").and_then(Value::as_str) != Some("logsNotification") {
+            return; // subscription ack / other control message
+        }
+        let result = &value["params"]["result"]["value"];
+        if !result["err"].is_null() {
+            return; // failed transaction
+        }
+        let Some(signature) = result["signature"].as_str() else {
+            return;
+        };
+        match self.fetch_facts(http, signature).await {
+            Ok(Some(facts)) => {
+                let _ = tx.send(classify(&facts, price.get().await)).await;
+            }
+            Ok(None) => {}
+            Err(err) => debug!(%err, signature, "getTransaction failed"),
+        }
     }
 
     async fn fetch_facts(
@@ -144,12 +205,17 @@ impl WebSocketRpcEventSource {
 #[async_trait::async_trait]
 impl EventSource for WebSocketRpcEventSource {
     async fn run(self: Box<Self>, tx: mpsc::Sender<OnChainEvent>) -> anyhow::Result<()> {
+        let pool = PgPoolOptions::new()
+            .max_connections(2)
+            .connect(&self.database_url)
+            .await
+            .context("connect Postgres (rpc watched wallets)")?;
         let price = SolPrice::new();
         let http = reqwest::Client::new();
         loop {
-            match self.stream_once(&tx, &price, &http).await {
-                Ok(()) => warn!("RPC websocket ended; reconnecting"),
-                Err(err) => tracing::error!(%err, "RPC websocket error; reconnecting"),
+            match self.stream_once(&pool, &tx, &price, &http).await {
+                Ok(()) => debug!("RPC stream cycle ended; reconnecting"),
+                Err(err) => error!(%err, "RPC websocket error; reconnecting"),
             }
             if tx.is_closed() {
                 return Ok(());
@@ -249,7 +315,6 @@ mod tests {
 
     #[test]
     fn parses_native_transfer_from_get_transaction() {
-        // Minimal jsonParsed getTransaction result for a 2-SOL transfer.
         let result = json!({
             "slot": 250_000_000,
             "transaction": {

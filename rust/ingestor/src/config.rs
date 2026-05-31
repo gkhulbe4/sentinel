@@ -26,8 +26,11 @@ pub struct Config {
     pub rpc_ws_url: Option<String>,
     /// HTTP RPC endpoint for getTransaction, e.g. https://mainnet.helius-rpc.com/?api-key=…
     pub rpc_http_url: Option<String>,
-    /// Comma-separated wallet/program addresses to watch (logsSubscribe mentions).
+    /// Extra wallet/program addresses to always watch, comma-separated. In `rpc`
+    /// mode this is unioned with the wallet addresses from users' active rules.
     pub rpc_watch_accounts: Option<String>,
+    /// Postgres URL — `rpc` mode reads watched wallets from active rules here.
+    pub database_url: Option<String>,
 }
 
 impl Config {
